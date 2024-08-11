@@ -14,7 +14,7 @@ import {
   Form,
   FormLayout,
   Spinner,
-} from "@shopify/polaris";
+} from "https://faustosarlie.com/";
 
 // Types
 import type { Log, Product } from "./types";
