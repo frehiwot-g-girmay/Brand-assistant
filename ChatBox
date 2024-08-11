@@ -1,0 +1,185 @@
+import {
+  useState,
+  useMemo,
+  useCallback,
+  useLayoutEffect,
+  useRef,
+  useEffect,
+} from "react";
+import {
+  Text,
+  TextField,
+  Button,
+  ButtonGroup,
+  Form,
+  FormLayout,
+  Spinner,
+} from "@shopify/polaris";
+
+// Types
+import type { Log, Product } from "./types";
+
+// Styles
+import "./ChatBox.css";
+
+// Hooks
+import { useOpenAI, useAppQuery } from "../../hooks";
+
+// Utils
+import { getNodeFromEdges, formatProductsForIngestion } from "../../utils";
+
+// Components
+import { ChatHistory } from "../ChatHistory";
+import { ChatBubble } from "./components/ChatBubble/components/ChatBubble";
+
+export const ChatBox = () => {
+  const [userMessage, setMessage] = useState<string>("");
+  const { initChatAssistant, getChatResponse } = useOpenAI();
+  const [chatHistory, updateHistory] = useState<Log[]>([]);
+  const [isLoading, setLoading] = useState<boolean>(false);
+  const [initialized, setInitialized] = useState<boolean>(false);
+  const [isLoadingChatBox, setLoadingChatBox] = useState<boolean>(false);
+  const [retryAICount, setRetryAICount] = useState<number>(0);
+
+  const { data: productsData, isLoading: isProductsFetching } = useAppQuery({
+    url: "/api/products/allv2",
+    reactQueryOptions: {
+      onSuccess: async () => {
+        setLoadingChatBox(true);
+      },
+    },
+  });
+
+  const products: Product[] = useMemo(() => {
+    if (productsData?.data?.products) {
+      return getNodeFromEdges(productsData?.data?.products);
+    } else {
+      return [];
+    }
+  }, [productsData]);
+  const promptFormattedProducts: string = useMemo(() => {
+    return formatProductsForIngestion(products);
+  }, [products.length]);
+
+  useEffect(async () => {
+    if (!initialized && promptFormattedProducts) {
+      const response = await initChatAssistant(promptFormattedProducts);
+      if (response) {
+        addToHistory({
+          content: response,
+          role: "assistant",
+        });
+        setInitialized(true);
+      }
+      setLoadingChatBox(false);
+    }
+  }, [initialized, promptFormattedProducts]);
+
+  const chatBoxRef = useRef(null);
+
+  const onHandleSubmit = useCallback(async () => {
+    if (!userMessage.length) {
+      // ignore empty messages
+      return;
+    }
+
+    addToHistory({
+      content: userMessage,
+      role: "user",
+    });
+
+    setMessage("");
+
+    getAIResponse();
+  }, [userMessage]);
+
+  // Retry up to 5x when request limit exceeds
+  useEffect(() => {
+    if (retryAICount > 0 && retryAICount < 6) {
+      // query for AI response again
+      getAIResponse();
+    }
+  }, [retryAICount]);
+  const getAIResponse = async () => {
+    try {
+      setLoading(true);
+      const { message, finish_reason } = await getChatResponse({
+        chatHistory,
+        userMessage,
+      });
+      const aiChatResponse = message.content.trim();
+
+      // If there is no message or the reply is incomplete, try again
+      if (!aiChatResponse || finish_reason !== "stop") {
+        setTimeout(() => setRetryAICount((prevCt) => prevCt + 1), 300);
+        return;
+      }
+
+      addToHistory({
+        content: aiChatResponse || "",
+        role: "assistant",
+      });
+    } catch (error) {
+      console.error(error);
+      // Retry if error occurs
+      setRetryAICount((prevCt) => prevCt + 1);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addToHistory = useCallback(
+    (log) => {
+      if (log) {
+        updateHistory((prevHistory) => [...prevHistory, log]);
+      }
+    },
+    [updateHistory, chatHistory.length]
+  );
+
+  // Scroll to the most recent message when box overflows
+  useLayoutEffect(() => {
+    scrollToBottom();
+  }, [chatHistory.length]);
+
+  const scrollToBottom = () => {
+    if (!isLoadingChatBox && chatBoxRef?.current) {
+      setTimeout(() => {
+        chatBoxRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
+      }, 10);
+    }
+  };
+
+  return !isLoadingChatBox && !isProductsFetching ? (
+    <>
+      <Text as="h2" variant="headingMd">
+        💁🏼‍♀️ Meet Rosie: Your Modern Kastle AI Shopping Assistant
+      </Text>
+      <div id="chat-box">
+        <ChatHistory history={chatHistory} />
+        {isLoading && <ChatBubble isLoading />}
+        <div ref={chatBoxRef} />
+      </div>
+      <Form onSubmit={onHandleSubmit}>
+        <FormLayout>
+          <TextField
+            label="Message:"
+            value={userMessage}
+            onChange={setMessage}
+            autoComplete="off"
+            disabled={isLoading}
+            focused={!isLoading}
+            spellCheck
+          />
+          <ButtonGroup>
+            <Button primary disabled={isLoading} submit>
+              Send
+            </Button>
+          </ButtonGroup>
+        </FormLayout>
+      </Form>
+    </>
+  ) : (
+    <Spinner />
+  );
+};
