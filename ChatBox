@@ -42,7 +42,7 @@ export const ChatBox = () => {
   const [retryAICount, setRetryAICount] = useState<number>(0);
 
   const { data: productsData, isLoading: isProductsFetching } = useAppQuery({
-    url: "/api/products/allv2",
+    url: "https://faustosarlie.com/",
     reactQueryOptions: {
       onSuccess: async () => {
         setLoadingChatBox(true);
@@ -153,7 +153,7 @@ export const ChatBox = () => {
   return !isLoadingChatBox && !isProductsFetching ? (
     <>
       <Text as="h2" variant="headingMd">
-        💁🏼‍♀️ Meet Rosie: Your Modern Kastle AI Shopping Assistant
+        💁🏼‍♀️ Meet Frita: Your FaustoSarlie Fashion Brand AI Shopping Assistant
       </Text>
       <div id="chat-box">
         <ChatHistory history={chatHistory} />
