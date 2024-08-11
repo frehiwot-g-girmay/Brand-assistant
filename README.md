@@ -4,8 +4,7 @@
 https://anneuy.com/demos/shop-assistant-ai-demo.webm
 
 ## Background
-I am working on an online Shopify store called "Modern Kastle" selling diaper bags I designed. I've been really into the AI space lately so I thought it would be fun to experiment with the OpenAI API (company behind the famous Chat GPT-3).
-This is a snippet of a chatbox component from a custom Shopify App I made from scratch, which I started last Sunday, May 28.
+I am working on an online as brand ambassador for a fashion clothing brand called "FaustoSarlie" selling fashion clothes for both men and men, jewleries, bags and many more. I decided to work on this as a project for one of my assignments in Headstarter Software Engineering fellowship. I thought it would be fun to experiment with the OpenAI API (company behind the famous Chat GPT-3).
 This AI chatbot's goal is to help direct potential buyers to a product depending on their preferences, as if they are engaging with a real store salesperson.
 It's also pretty fun to put on the shop I'd think :)
 
